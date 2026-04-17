@@ -25,14 +25,14 @@ ENV APP_MODE=dev \
     DEVELOPER_CHAT_ID= \
     PIP_BREAK_SYSTEM_PACKAGES=1
 
-# Install Calibere And Python
+# Install calibre runtime dependencies and Python
 RUN \
   set -eux; \
-  apt_packages="ca-certificates curl pkg-config tzdata wget xz-utils iputils-ping git libfontconfig1 libgl1 libnss3 libopengl0 libxcb-cursor0 python3 python3-pip python3-pyqt5.qtmultimedia python3-pyqt5.qtwebengine"; \
+  apt_packages="ca-certificates curl pkg-config tzdata wget xz-utils iputils-ping git libegl1 libfontconfig1 libgl1 libnss3 libopengl0 libxcb-cursor0 libxcb-xinerama0 libxkbcommon0 python3 python3-pip"; \
   attempt=0; \
   until [ "${attempt}" -ge 3 ]; do \
-    if apt-get update -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 \
-      && apt-get install -y --no-install-recommends --fix-missing ${apt_packages}; then \
+    if apt-get update -o APT::Update::Error-Mode=any -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 \
+      && apt-get install -y --no-install-recommends -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 ${apt_packages}; then \
       break; \
     fi; \
     attempt=$((attempt + 1)); \
