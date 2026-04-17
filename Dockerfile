@@ -28,7 +28,7 @@ ENV APP_MODE=dev \
 # Install Calibere And Python
 RUN \
   set -eux; \
-  apt_packages="ca-certificates curl pkg-config tzdata wget iputils-ping git libfontconfig1 libgl1 libnss3 libopengl0 libxcb-cursor0 python3 python3-pip python3-pyqt5.qtmultimedia python3-pyqt5.qtwebengine"; \
+  apt_packages="ca-certificates curl pkg-config tzdata wget xz-utils iputils-ping git libfontconfig1 libgl1 libnss3 libopengl0 libxcb-cursor0 python3 python3-pip python3-pyqt5.qtmultimedia python3-pyqt5.qtwebengine"; \
   attempt=0; \
   until [ "${attempt}" -ge 3 ]; do \
     if apt-get update -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 \
