@@ -16,6 +16,10 @@ from app.email.email_sender import send_to_kindle
 from app.utils.util import convert_book, get_book_meta
 
 
+STORAGE_DIR = os.path.join(os.getcwd(), 'storage')
+BOOKS_DIR = os.path.join(STORAGE_DIR, 'books')
+
+
 class Document:
     amazon_allow_file = ('doc', 'docx', 'rtf', 'html', 'htm', 'pdf', 'txt')
     allow_send_file = amazon_allow_file + \
@@ -32,13 +36,12 @@ class Document:
         self.user = user
         self.origin_file = document
 
-        self.origin_file_path = os.sep.join([
-            os.getcwd(),
-            "storage",
+        self.origin_file_path = os.path.join(
+            STORAGE_DIR,
             str(self.user.user_model.telegram_id),
             self.origin_file.file_unique_id,
             self.origin_file.file_name
-        ])
+        )
         self.check()
 
     def check(self):
@@ -133,7 +136,7 @@ class Document:
         book_meta = self.get_book_meta()
         if book_meta['Title'] != "Unknown" and len(book_meta['Title'].encode()) <= 200:
             ext = os.path.splitext(self.new_file_path)[1]
-            new_path = os.getcwd() + os.sep + "books" + os.sep
+            new_path = BOOKS_DIR + os.sep
             if book_meta['Author(s)'] != "Unknown" and \
                     len(book_meta['Author(s)'].encode()) + len(book_meta['Title'].encode()) <= 250:
                 new_path += book_meta['Author(s)'] + " - "

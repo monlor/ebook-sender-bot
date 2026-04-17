@@ -46,8 +46,10 @@ Try it: [https://t.me/e_book_send_bot](https://t.me/e_book_send_bot)
 ### [recommended] docker-compose install
 [docker-compose.yml](docker-compose.yml)
 ```shell
-docker-compose up -d
+docker compose up -d
 ```
+
+The container now persists runtime files under `/app/storage` only. After the first GHCR publish, set the package visibility to `Public` if you want anonymous `docker pull` access.
 
 ### [recommended] docker install
 ```shell
@@ -59,15 +61,16 @@ docker run -d \
     -e MAX_SEND_LIMIT=10 \
     -e FORMAT=epub \
     -e EMAIL_PROVIDER=config \
-    -e SMTP_HOST={YOUR_SMTP_HOST} \
-    -e SMTP_PORT={YOUR_SMTP_PORT} \
-    -e SMTP_USERNAME={YOUR_SMTP_USERNAME} \
-    -e SMTP_PASSWORD={YOUR_SMTP_PASSWORD} \
-    -e BOT_TOKEN={YOUR_BOT_TOKEN} \
-    -e DEVELOPER_CHAT_ID={YOUR_TELEGRAM_CHAT_ID} \
-    -v `./ebooks/`:`/app/storage/` \
-    -v `./default.log`:`/app/default.log` \
-    qcgzxw/ebook-sender-bot
+    -e DB=sqlite \
+    -e DB_NAME=/app/storage/ebook-sender-bot.db \
+    -e SMTP_HOST=smtp.fastmail.com \
+    -e SMTP_PORT=465 \
+    -e SMTP_USERNAME=${FASTMAIL_USERNAME} \
+    -e SMTP_PASSWORD=${FASTMAIL_PASSWORD} \
+    -e BOT_TOKEN=${EBOOK_SENDER_BOT_TOKEN} \
+    -e DEVELOPER_CHAT_ID=${EBOOK_SENDER_BOT_DEVELOPER_CHAT_ID} \
+    -v ebook-sender-bot-storage:/app/storage \
+    ghcr.io/monlor/ebook-sender-bot:latest
 ```
 
 ### source install

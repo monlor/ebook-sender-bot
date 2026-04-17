@@ -2,6 +2,7 @@ import datetime
 import html
 import json
 import logging
+import os
 import time
 import traceback
 
@@ -16,6 +17,10 @@ from app.tg_bot.document import Document
 from app.tg_bot.errors import NotifyException
 from app.tg_bot.user import User
 from app.utils.util import gen_sender_email_username
+
+
+STORAGE_DIR = os.path.join(os.getcwd(), 'storage')
+LOG_PATH = os.path.join(STORAGE_DIR, 'default.log')
 
 
 class TgBot:
@@ -34,9 +39,10 @@ class TgBot:
             logging.basicConfig(level=logging.DEBUG,
                                 format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         else:
+            os.makedirs(STORAGE_DIR, exist_ok=True)
             logging.basicConfig(level=logging.ERROR,
                                 format='%(asctime)s - %(message)s - %(levelname)s - %(message)s',
-                                handlers=[logging.FileHandler(filename='default.log', mode='a', encoding='utf-8')],
+                                handlers=[logging.FileHandler(filename=LOG_PATH, mode='a', encoding='utf-8')],
                                 )
         self.logger = logging.getLogger("telegram_message")
 

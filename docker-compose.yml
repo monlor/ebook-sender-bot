@@ -1,8 +1,6 @@
-version: '3'
-
 services:
   ebook-sender-bot:
-    image: qcgzxw/ebook-sender-bot:latest
+    image: ghcr.io/monlor/ebook-sender-bot:latest
     container_name: ebook-sender-bot
     restart: unless-stopped
     environment:
@@ -12,19 +10,17 @@ services:
       - FORMAT=epub
       - EMAIL_PROVIDER=config
       - DB=sqlite
-      - DB_NAME=ebook-sender-bot
-      #- DB=mysql
-      #- DB_NAME=tg_bot_kindle
-      #- DB_HOST=192.168.1.1
-      #- DB_PORT=3306
-      #- DB_USER=root
-      #- DB_PASSWORD=root
-      - SMTP_HOST=
-      - SMTP_PORT=
-      - SMTP_USERNAME=
-      - SMTP_PASSWORD=
-      - BOT_TOKEN=
-      - DEVELOPER_CHAT_ID=
+      - DB_NAME=/app/storage/ebook-sender-bot.db
+      - SMTP_HOST=smtp.fastmail.com
+      - SMTP_PORT=465
+      - SMTP_USERNAME=${FASTMAIL_USERNAME}
+      - SMTP_PASSWORD=${FASTMAIL_PASSWORD}
+      - BOT_TOKEN=${EBOOK_SENDER_BOT_TOKEN}
+      - DEVELOPER_CHAT_ID=${EBOOK_SENDER_BOT_DEVELOPER_CHAT_ID}
     volumes:
-      - ./ebooks/:/app/storage/
-      - ./default.log:/app/default.log
+      - ebook-sender-bot-storage:/app/storage
+    labels:
+      - com.centurylinklabs.watchtower.enable=false
+
+volumes:
+  ebook-sender-bot-storage:

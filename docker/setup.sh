@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 set -e
+
+mkdir -p /app/storage
+if [ "${DB:-}" = "sqlite" ] && [ -n "${DB_NAME:-}" ]; then
+    mkdir -p "$(dirname "$DB_NAME")"
+fi
+touch /app/storage/default.log
+
 cp /app/docker/config.ini /app/config.ini
 for name in APP_MODE MAX_SEND_LIMIT DB FORMAT EMAIL_PROVIDER DB_NAME DB_HOST DB_PORT DB_USER DB_PASSWORD SMTP_HOST SMTP_PORT SMTP_USERNAME SMTP_PASSWORD MAILCOW_URL MAILCOW_API_KEY MAILCOW_MAILBOX_DOMAIN BOT_TOKEN DEVELOPER_CHAT_ID
 do

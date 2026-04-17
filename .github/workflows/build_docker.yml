@@ -1,35 +1,167 @@
-name: ci
+name: build-docker
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - 'master'
+      - master
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
 
 jobs:
-  docker:
-    runs-on: ubuntu-latest
+  prepare:
+    runs-on: ubuntu-24.04
+    outputs:
+      image_name: ${{ steps.prepare.outputs.image_name }}
+      tags: ${{ steps.prepare.outputs.tags }}
     steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v2
-      -
-        name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-      -
-        name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-      -
-        name: Login to DockerHub
-        uses: docker/login-action@v1 
+      - name: Prepare image metadata
+        id: prepare
+        shell: bash
+        run: |
+          image_name="${{ env.REGISTRY }}/${GITHUB_REPOSITORY,,}"
+          short_sha="${GITHUB_SHA::7}"
+          tags="${image_name}:sha-${short_sha}"
+
+          if [[ "${GITHUB_REF}" == "refs/heads/master" ]]; then
+            tags="${image_name}:latest"$'\n'"${tags}"
+          fi
+
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            tags="${image_name}:${GITHUB_REF_NAME}"$'\n'"${tags}"
+          fi
+
+          {
+            echo "image_name=${image_name}"
+            echo "tags<<EOF"
+            printf '%s\n' "$tags"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+  build-amd64:
+    runs-on: ubuntu-24.04
+    needs: prepare
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      -
-        name: Build and push
-        uses: docker/build-push-action@v2
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push amd64 image
+        id: build
+        uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64
-          push: true
-          tags: qcgzxw/ebook-sender-bot:latest
+          provenance: false
+          tags: ${{ needs.prepare.outputs.image_name }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+      - name: Export amd64 digest
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${RUNNER_TEMP}/digests/${digest#sha256:}"
+      - name: Upload amd64 digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-amd64
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  build-arm64:
+    runs-on: ubuntu-24.04-arm
+    needs: prepare
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push arm64 image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          provenance: false
+          tags: ${{ needs.prepare.outputs.image_name }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+      - name: Export arm64 digest
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${RUNNER_TEMP}/digests/${digest#sha256:}"
+      - name: Upload arm64 digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-arm64
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-manifest:
+    runs-on: ubuntu-24.04
+    needs:
+      - prepare
+      - build-amd64
+      - build-arm64
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          pattern: digests-*
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create and push manifest
+        shell: bash
+        run: |
+          shopt -s nullglob
+          tag_args=()
+          while IFS= read -r tag; do
+            if [[ -n "${tag}" ]]; then
+              tag_args+=("-t" "${tag}")
+            fi
+          done <<< "${{ needs.prepare.outputs.tags }}"
+
+          source_refs=()
+          for digest_file in "${RUNNER_TEMP}"/digests/*; do
+            source_refs+=("${{ needs.prepare.outputs.image_name }}@sha256:$(basename "${digest_file}")")
+          done
+
+          docker buildx imagetools create "${tag_args[@]}" "${source_refs[@]}"
+      - name: Inspect manifest
+        shell: bash
+        run: |
+          while IFS= read -r tag; do
+            if [[ -n "${tag}" ]]; then
+              docker buildx imagetools inspect "${tag}"
+            fi
+          done <<< "${{ needs.prepare.outputs.tags }}"
