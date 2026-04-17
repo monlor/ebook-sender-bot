@@ -17,7 +17,7 @@ env:
 
 jobs:
   prepare:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     outputs:
       image_name: ${{ steps.prepare.outputs.image_name }}
       tags: ${{ steps.prepare.outputs.tags }}
@@ -46,7 +46,7 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
   build-amd64:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     needs: prepare
     steps:
       - name: Checkout
@@ -120,7 +120,7 @@ jobs:
           retention-days: 1
 
   merge-manifest:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     needs:
       - prepare
       - build-amd64
